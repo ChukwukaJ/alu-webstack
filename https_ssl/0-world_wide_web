@@ -1,38 +1,25 @@
 #!/usr/bin/env bash
-# Function to perform DNS lookup and use awk for formatting
-perform_dns_lookup() {
-    local domain="$1"
-    local subdomain="$2"
+# display the record type and the adress where it points to, for a given domain and subdomain
 
-    # Use dig to perform DNS lookup and format the output using awk
-    dig +short "$subdomain.$domain" | awk -v subdomain="$subdomain" \
-        '{if ($0 == "") print "No record found for " subdomain; else print "The subdomain " subdomain " is a A record and points to " $0}'
+
+
+domain=$1
+subdomain=$2
+
+check_subdomain() {
+    result=$(dig $1.$domain | awk '/ANSWER SECTION/{getline; print}')
+    record=$(echo $result | awk '{print $4}')
+    ip=$(echo $result | awk '{print $5}')
+
+    echo "The subdomain $1 is a $record record and points to $ip"
 }
 
-# Main script
-main() {
-    local domain="$1"
-    local subdomain="$2"
-
-    # Default subdomains order
-    subdomains=("www" "lb-01" "web-01" "web-02")
-
-    if [ -z "$subdomain" ]; then
-        # If no specific subdomain provided, loop through default subdomains
-        for sub in "${subdomains[@]}"; do
-            perform_dns_lookup "$domain" "$sub"
-        done
-    else
-        # If a specific subdomain is provided, perform DNS lookup for that subdomain only
-        perform_dns_lookup "$domain" "$subdomain"
-    fi
-}
-
-# Check if required arguments are provided
-if [ "$#" -lt 1 ]; then
-    echo "Usage: $0 <domain> [subdomain]"
-    exit 1
+if [ -z "$subdomain" ]
+then
+    for sub in www lb-01 web-01 web-02
+    do
+        check_subdomain $sub
+    done
+else
+    check_subdomain $subdomain
 fi
-
-main "$1" "$2"
-
